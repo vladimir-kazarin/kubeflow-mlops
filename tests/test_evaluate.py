@@ -36,6 +36,15 @@ def test_confusion_matrix_rows_are_true_labels():
     assert matrix == [[1, 1], [0, 1]]
 
 
+@pytest.mark.parametrize("correct, threshold", [(9000, 0.9), (8800, 0.88), (7000, 0.7), (9500, 0.95)])
+def test_accuracy_exactly_at_threshold_passes_gate_with_real_tensors(correct, threshold):
+    total = 10_000
+    y_true = torch.zeros(total, dtype=torch.int64)
+    y_pred = torch.cat([torch.zeros(correct, dtype=torch.int64), torch.ones(total - correct, dtype=torch.int64)])
+
+    assert passes_gate(accuracy(y_true, y_pred), threshold) is True
+
+
 def test_passes_gate_is_inclusive_at_the_threshold():
     assert passes_gate(0.85, 0.85) is True
     assert passes_gate(0.8499, 0.85) is False

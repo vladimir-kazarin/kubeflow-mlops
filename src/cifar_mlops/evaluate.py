@@ -31,7 +31,8 @@ def accuracy(y_true: torch.Tensor, y_pred: torch.Tensor) -> float:
         raise ValueError(f"y_true and y_pred must have the same length; got {tuple(y_true.shape)} and {tuple(y_pred.shape)}")
     if y_true.numel() == 0:
         raise ValueError("cannot compute accuracy of an empty set")
-    return (y_true == y_pred).float().mean().item()
+    # Divide in Python (float64): a float32 mean makes e.g. 9000/10000 = 0.8999999762 < 0.9.
+    return (y_true == y_pred).sum().item() / y_true.numel()
 
 
 def evaluate_accuracy(model, split: Split, batch_size: int, device: torch.device) -> float:
