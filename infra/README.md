@@ -8,6 +8,9 @@ Your other clusters (e.g. `kind-asi-lab`) are never touched by these scripts.
 Your Windows NVIDIA driver already exposes the GPU to WSL (`nvidia-smi` works).
 Docker needs the NVIDIA Container Toolkit to pass it into containers.
 
+**Quick way:** `sudo bash infra/install-host-gpu-runtime.sh` does everything below,
+restarts any kind nodes that were running, and prints the checks.
+
 ```bash
 curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey \
   | sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
