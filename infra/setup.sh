@@ -164,22 +164,18 @@ configure_serving_namespace() {
   log "KFP object store endpoint: ${OBJECT_STORE_ENDPOINT}"
 
   "${KCTL[@]}" apply -f "${SCRIPT_DIR}/serving.yaml"
-  # Credentials go through stdin, never through command-line arguments.
-  "${KCTL[@]}" apply -f - <<EOF
-apiVersion: v1
-kind: Secret
-metadata:
-  name: kfp-object-store
-  namespace: ${SERVING_NAMESPACE}
-  annotations:
-    serving.kserve.io/s3-endpoint: ${OBJECT_STORE_ENDPOINT}
-    serving.kserve.io/s3-usehttps: "0"
-    serving.kserve.io/s3-verifyssl: "0"
-    serving.kserve.io/s3-region: us-east-1
-type: Opaque
-stringData:
-  AWS_ACCESS_KEY_ID: ${access_key}
-  AWS_SECRET_ACCESS_KEY: ${secret_key}
+  # Credentials go through stdin, never through command-line arguments. An env file keeps
+  # each value literal, so keys that look like numbers, booleans or YAML syntax stay intact.
+  "${KCTL[@]}" -n "${SERVING_NAMESPACE}" create secret generic kfp-object-store \
+      --from-env-file=/dev/stdin --dry-run=client -o yaml <<EOF \
+    | "${KCTL[@]}" annotate --local -f - -o yaml \
+        "serving.kserve.io/s3-endpoint=${OBJECT_STORE_ENDPOINT}" \
+        serving.kserve.io/s3-usehttps=0 \
+        serving.kserve.io/s3-verifyssl=0 \
+        serving.kserve.io/s3-region=us-east-1 \
+    | "${KCTL[@]}" apply -f -
+AWS_ACCESS_KEY_ID=${access_key}
+AWS_SECRET_ACCESS_KEY=${secret_key}
 EOF
   "${KCTL[@]}" auth can-i create inferenceservices.serving.kserve.io -n "${SERVING_NAMESPACE}" \
     --as system:serviceaccount:kubeflow:pipeline-runner | grep -qx yes \

@@ -38,4 +38,4 @@ sysctl --quiet --load /etc/sysctl.d/99-kind-inotify.conf
 echo "==> Checks"
 echo "Default runtime: $(docker info --format '{{.DefaultRuntime}}')"
 docker run --rm --gpus all ubuntu:24.04 nvidia-smi -L
-echo "Done. Tell Claude to continue."
+echo "Done. Next: make setup"

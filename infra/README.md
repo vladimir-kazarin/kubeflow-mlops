@@ -64,6 +64,11 @@ store (SeaweedFS at `seaweedfs.kubeflow:9000` in KFP 2.17; MinIO in older releas
 endpoint from the `ml-pipeline` deployment and copies the store's credentials into
 `serving/kfp-object-store` so KServe can download trained models from there.
 
+**Lab-only shortcut:** those are KFP's root object-store credentials (read *and* write
+access to every artifact), and anything in the `serving` namespace that can mount the
+Secret gets them. That's fine for a single-user kind cluster. On a shared cluster, give
+KServe a separate read-only key that's limited to the model paths instead.
+
 ### KServe "Standard" mode
 KServe calls the no-Knative/no-Istio mode "Standard" (older name: "RawDeployment").
 Each InferenceService becomes a plain Deployment + Service. `setup.sh` makes it the

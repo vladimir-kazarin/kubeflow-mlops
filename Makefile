@@ -11,6 +11,7 @@ BATCH_SIZE ?= 128
 THRESHOLD ?= 0.85
 COUNT ?= 8
 PREDICT_PORT := 8081
+PREDICT_WAIT_TRIES := 30
 
 .PHONY: setup teardown ui venv test image gpu-check run predict
 
@@ -47,6 +48,14 @@ run:
 	$(PY) -m pipelines.submit --epochs $(EPOCHS) --learning-rate $(LR) --batch-size $(BATCH_SIZE) --threshold $(THRESHOLD)
 
 predict:
-	@kubectl --context $(CONTEXT) -n serving port-forward svc/cifar10-predictor $(PREDICT_PORT):80 >/dev/null 2>&1 & \
-	PF_PID=$$!; trap "kill $$PF_PID" EXIT; sleep 3; \
+	@kubectl --context $(CONTEXT) -n serving get svc cifar10-predictor >/dev/null 2>&1 || { \
+	  echo "No model deployed yet. Run 'make run' and check that evaluate-op approved it (accuracy gate)."; \
+	  exit 1; }
+	@kubectl --context $(CONTEXT) -n serving port-forward svc/cifar10-predictor $(PREDICT_PORT):80 >/dev/null & \
+	PF_PID=$$!; trap "kill $$PF_PID 2>/dev/null" EXIT; \
+	for _ in $$(seq 1 $(PREDICT_WAIT_TRIES)); do \
+	  curl -s -o /dev/null http://localhost:$(PREDICT_PORT)/ && break; \
+	  kill -0 $$PF_PID 2>/dev/null || { echo "port-forward exited (see error above)"; exit 1; }; \
+	  sleep 0.5; \
+	done; \
 	$(PY) scripts/predict.py --url http://localhost:$(PREDICT_PORT) --count $(COUNT)
