@@ -1,0 +1,39 @@
+# Namespace where models are served, plus the permissions the pipeline's deploy step needs.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: serving
+---
+# Pods of the InferenceService run as this account; its secret lets KServe download
+# model artifacts from the KFP object store.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: model-puller
+  namespace: serving
+secrets:
+  - name: kfp-object-store
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: inferenceservice-deployer
+  namespace: serving
+rules:
+  - apiGroups: ["serving.kserve.io"]
+    resources: ["inferenceservices"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: pipeline-runner-deploys-models
+  namespace: serving
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: inferenceservice-deployer
+subjects:
+  - kind: ServiceAccount
+    name: pipeline-runner
+    namespace: kubeflow

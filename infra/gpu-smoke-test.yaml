@@ -1,0 +1,14 @@
+# Proves a pod can see the GPU. __CUDA_IMAGE__ is replaced by setup.sh.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: gpu-smoke-test
+spec:
+  restartPolicy: Never
+  containers:
+    - name: cuda
+      image: __CUDA_IMAGE__
+      command: ["nvidia-smi"]
+      resources:
+        limits:
+          nvidia.com/gpu: 1
