@@ -125,12 +125,21 @@ json.dump(cm, sys.stdout)' | "${KCTL[@]}" apply --server-side --force-conflicts 
 
 install_kserve() {
   log "Installing KServe ${KSERVE_VERSION} (Standard/RawDeployment mode)"
+  # kserve.yaml expects the namespace to exist already (KServe's own installer creates it first).
+  "${KCTL[@]}" create namespace kserve --dry-run=client -o yaml | "${KCTL[@]}" apply -f -
   "${KCTL[@]}" apply --server-side --force-conflicts -f "${KSERVE_RELEASE_URL}/kserve.yaml"
   "${KCTL[@]}" -n kserve wait --for=condition=Available deployment/kserve-controller-manager --timeout=600s
-  # Cluster serving runtimes go through the KServe webhook, which may need a moment after startup.
-  local attempt
+  # Only the ClusterServingRuntimes are needed (the sample sklearn model uses one). The file's
+  # LLMInferenceServiceConfig objects are rejected by v0.21.0's own webhook, so they are skipped.
+  local runtimes attempt
+  runtimes="$(curl -fsSL "${KSERVE_RELEASE_URL}/kserve-cluster-resources.yaml" | python3 -c '
+import sys, yaml
+docs = [d for d in yaml.safe_load_all(sys.stdin) if d and d.get("kind") == "ClusterServingRuntime"]
+yaml.safe_dump_all(docs, sys.stdout)')"
+  [[ -n "${runtimes}" ]] || die "No ClusterServingRuntimes found in KServe ${KSERVE_VERSION} cluster resources"
+  # The KServe webhook may need a moment after startup before it accepts requests.
   for attempt in 1 2 3 4 5; do
-    "${KCTL[@]}" apply --server-side --force-conflicts -f "${KSERVE_RELEASE_URL}/kserve-cluster-resources.yaml" && break
+    "${KCTL[@]}" apply --server-side --force-conflicts -f - <<<"${runtimes}" && break
     [[ "${attempt}" == 5 ]] && die "Could not apply KServe cluster resources"
     sleep 10
   done
@@ -143,8 +152,16 @@ configure_serving_namespace() {
   access_key="$("${KCTL[@]}" -n kubeflow get secret mlpipeline-minio-artifact -o jsonpath='{.data.accesskey}' | base64 -d)"
   secret_key="$("${KCTL[@]}" -n kubeflow get secret mlpipeline-minio-artifact -o jsonpath='{.data.secretkey}' | base64 -d)"
   [[ -n "${access_key}" && -n "${secret_key}" ]] || die "Could not read kubeflow/mlpipeline-minio-artifact credentials"
-  "${KCTL[@]}" get svc -n kubeflow minio-service >/dev/null \
-    || die "kubeflow/minio-service not found; KFP object store layout changed. Check 'kubectl -n kubeflow get svc'."
+  # Ask KFP where its object store lives (MinIO in older releases, SeaweedFS since 2.15).
+  local store_env store_host store_port
+  store_env="$("${KCTL[@]}" -n kubeflow get deploy ml-pipeline \
+    -o jsonpath='{range .spec.template.spec.containers[0].env[*]}{.name}={.value}{"\n"}{end}')"
+  store_host="$(sed -n 's/^OBJECTSTORECONFIG_HOST=//p' <<<"${store_env}")"
+  store_port="$(sed -n 's/^OBJECTSTORECONFIG_PORT=//p' <<<"${store_env}")"
+  [[ -n "${store_host}" && -n "${store_port}" ]] \
+    || die "Could not read OBJECTSTORECONFIG_HOST/PORT from kubeflow/ml-pipeline"
+  OBJECT_STORE_ENDPOINT="${store_host}:${store_port}"
+  log "KFP object store endpoint: ${OBJECT_STORE_ENDPOINT}"
 
   "${KCTL[@]}" apply -f "${SCRIPT_DIR}/serving.yaml"
   # Credentials go through stdin, never through command-line arguments.
@@ -155,7 +172,7 @@ metadata:
   name: kfp-object-store
   namespace: ${SERVING_NAMESPACE}
   annotations:
-    serving.kserve.io/s3-endpoint: minio-service.kubeflow:9000
+    serving.kserve.io/s3-endpoint: ${OBJECT_STORE_ENDPOINT}
     serving.kserve.io/s3-usehttps: "0"
     serving.kserve.io/s3-verifyssl: "0"
     serving.kserve.io/s3-region: us-east-1

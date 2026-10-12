@@ -60,7 +60,8 @@ make ui                                                          # then open htt
 
 ### Object store credentials
 KFP stores every artifact (datasets, models, metrics) in its own S3-compatible
-store (`minio-service.kubeflow:9000`). `setup.sh` copies its credentials into
+store (SeaweedFS at `seaweedfs.kubeflow:9000` in KFP 2.17; MinIO in older releases). `setup.sh` reads the
+endpoint from the `ml-pipeline` deployment and copies the store's credentials into
 `serving/kfp-object-store` so KServe can download trained models from there.
 
 ### KServe "Standard" mode
