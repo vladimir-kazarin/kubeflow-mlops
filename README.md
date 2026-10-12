@@ -31,6 +31,10 @@ prepare_data ──▶ train (GPU) ──▶ evaluate ──▶ [accuracy ≥ th
 - **Serving.** `kubectl --context kind-kubeflow-lab -n serving get isvc,deploy,pods`
   shows what KServe created from one `InferenceService` object
   (`src/cifar_mlops/deploy.py`). Each passing run rolls out the new model.
+- **Rebuilt the image?** After `make image`, run
+  `kubectl --context kind-kubeflow-lab -n serving delete pod -l component=predictor`.
+  KServe owns the predictor Deployment and undoes `kubectl rollout restart`, so
+  deleting the pod is how the running model picks up new code.
 - **Rollback.** Every run's model stays in the object store. Point the
   InferenceService's `STORAGE_URI` at an older run's model URI (from the UI) with
   `kubectl --context kind-kubeflow-lab -n serving edit isvc cifar10`.
