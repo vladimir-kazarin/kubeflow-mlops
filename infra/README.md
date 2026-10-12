@@ -36,3 +36,61 @@ docker start asi-lab-control-plane   # repeat for each stopped node listed above
 docker info --format '{{.DefaultRuntime}}'                      # → nvidia
 docker run --rm --gpus all ubuntu:24.04 nvidia-smi -L           # → GPU 0: NVIDIA GeForce RTX 4060 Laptop GPU ...
 ```
+
+## Step 2 — Create the cluster and install everything
+
+```bash
+make setup
+```
+
+Each stage prints `==> ...` and checks itself. The GPU stage ends with the
+`nvidia-smi` table from inside a Kubernetes pod; the last stage deploys and
+deletes a sample KServe model.
+
+## What "done" looks like
+
+```bash
+kubectl --context kind-kubeflow-lab get pods -n kubeflow        # all Running
+kubectl --context kind-kubeflow-lab get pods -n kserve          # kserve-controller-manager Running
+make ui                                                          # then open http://localhost:8080
+```
+
+### Object store credentials
+KFP stores every artifact (datasets, models, metrics) in its own S3-compatible
+store (`minio-service.kubeflow:9000`). `setup.sh` copies its credentials into
+`serving/kfp-object-store` so KServe can download trained models from there.
+
+### KServe "Standard" mode
+KServe calls the no-Knative/no-Istio mode "Standard" (older name: "RawDeployment").
+Each InferenceService becomes a plain Deployment + Service. `setup.sh` makes it the
+default and turns off Ingress creation (this cluster has no ingress controller);
+you reach models with `kubectl port-forward` instead.
+
+## Troubleshooting
+
+### GPU not visible (node never reports `nvidia.com/gpu`, or smoke test fails)
+1. Re-check Step 1: `docker run --rm --gpus all ubuntu:24.04 nvidia-smi -L`.
+2. Check the GPU reached the node: `docker exec kubeflow-lab-control-plane nvidia-smi -L`.
+   If this fails, the volume-mount trick did not apply. Check
+   `grep accept-nvidia /etc/nvidia-container-runtime/config.toml` shows `true`.
+3. Device plugin logs: `kubectl --context kind-kubeflow-lab -n nvidia-device-plugin logs -l app.kubernetes.io/name=nvidia-device-plugin`.
+4. WSL fallback: add these to the node in `infra/kind-config.yaml`, then `make teardown setup`:
+   ```yaml
+       - hostPath: /usr/lib/wsl
+         containerPath: /usr/lib/wsl
+       - hostPath: /dev/dxg
+         containerPath: /dev/dxg
+   ```
+
+### Pods stuck Pending
+`kubectl --context kind-kubeflow-lab describe pod <name>`. If it says
+`Insufficient memory`, raise WSL memory in `%UserProfile%\.wslconfig`
+(`[wsl2]` / `memory=14GB`) and run `wsl --shutdown` from Windows.
+
+### `deploy-op` times out
+`kubectl --context kind-kubeflow-lab -n serving describe isvc cifar10` and the logs of the
+`storage-initializer` init container of the `cifar10-predictor` pod. Wrong object-store
+credentials or `storageUri` are the usual causes.
+
+### Start over
+`make teardown && make setup`
