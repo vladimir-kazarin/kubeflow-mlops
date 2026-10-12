@@ -37,3 +37,23 @@ subjects:
   - kind: ServiceAccount
     name: pipeline-runner
     namespace: kubeflow
+---
+# KFP 2.17 restricts its SeaweedFS object store with a NetworkPolicy. This extra policy lets
+# KServe's storage initializer in the serving namespace download models (S3 port 8333 only).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: seaweedfs-from-serving
+  namespace: kubeflow
+spec:
+  podSelector:
+    matchLabels:
+      app: seaweedfs
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: serving
+      ports:
+        - port: 8333
