@@ -85,6 +85,12 @@ you reach models with `kubectl port-forward` instead.
          containerPath: /dev/dxg
    ```
 
+### Device plugin crashes with "too many open files"
+The host ran out of inotify instances (default 128, shared by every kind cluster).
+Re-run `sudo bash infra/install-host-gpu-runtime.sh`, or just:
+`sudo sysctl -w fs.inotify.max_user_instances=512`, then
+`kubectl --context kind-kubeflow-lab -n nvidia-device-plugin delete pod --all` and `make setup`.
+
 ### Pods stuck Pending
 `kubectl --context kind-kubeflow-lab describe pod <name>`. If it says
 `Insufficient memory`, raise WSL memory in `%UserProfile%\.wslconfig`

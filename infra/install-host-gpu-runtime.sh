@@ -28,6 +28,13 @@ for node in ${running_kind_nodes}; do
   docker start "${node}" >/dev/null
 done
 
+echo "==> Raising inotify limits (kind's documented fix; the default 128 instances runs out with 2+ clusters)"
+cat > /etc/sysctl.d/99-kind-inotify.conf <<'SYSCTL'
+fs.inotify.max_user_instances = 512
+fs.inotify.max_user_watches = 524288
+SYSCTL
+sysctl --quiet --load /etc/sysctl.d/99-kind-inotify.conf
+
 echo "==> Checks"
 echo "Default runtime: $(docker info --format '{{.DefaultRuntime}}')"
 docker run --rm --gpus all ubuntu:24.04 nvidia-smi -L
