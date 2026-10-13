@@ -114,7 +114,10 @@ def deploy_op(
     return f"{namespace}/{serving.name}"
 
 
-@dsl.pipeline(name="cifar10-gpu-mlops", description="Train ResNet-18 on CIFAR-10 on GPU and deploy it if accurate enough")
+@dsl.pipeline(
+    name="cifar10-gpu-mlops",
+    description="Train ResNet-18 on CIFAR-10 on GPU and deploy it if accurate enough",
+)
 def cifar10_pipeline(
     epochs: int = 3,
     learning_rate: float = 1e-3,

@@ -50,7 +50,7 @@ def main() -> None:
 
     correct = 0
     print(f"{'actual':<12}{'predicted':<12}confidence")
-    for index, prediction in zip(indices, result["predictions"]):
+    for index, prediction in zip(indices, result["predictions"], strict=True):
         actual = CIFAR10_CLASSES[test_set.targets[index]]
         correct += actual == prediction["label"]
         mark = "✓" if actual == prediction["label"] else "✗"

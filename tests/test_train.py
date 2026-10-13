@@ -36,7 +36,7 @@ def test_resolve_device_uses_cpu_when_gpu_optional_and_missing(monkeypatch):
 def test_random_flip_returns_each_image_either_unchanged_or_mirrored(tiny_split):
     flipped = random_flip(tiny_split.images, torch.Generator().manual_seed(0))
 
-    for original, result in zip(tiny_split.images, flipped):
+    for original, result in zip(tiny_split.images, flipped, strict=True):
         assert torch.equal(result, original) or torch.equal(result, original.flip(-1))
 
 

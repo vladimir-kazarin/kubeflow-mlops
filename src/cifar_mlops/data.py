@@ -94,7 +94,7 @@ def prepare_cifar10(output_dir: Path, val_fraction: float = 0.1, seed: int = 42)
         train_full = _split_from_torchvision(CIFAR10(download_dir, train=True, download=True))
         test = _split_from_torchvision(CIFAR10(download_dir, train=False, download=True))
     train, val = split_train_val(train_full, val_fraction=val_fraction, seed=seed)
-    splits = dict(zip(SPLIT_NAMES, (train, val, test)))
+    splits = dict(zip(SPLIT_NAMES, (train, val, test), strict=True))
     for name, split in splits.items():
         save_split(split, output_dir / f"{name}.pt")
     (output_dir / LABELS_FILE).write_text(json.dumps(list(CIFAR10_CLASSES)))

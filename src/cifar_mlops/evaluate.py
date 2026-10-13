@@ -28,7 +28,9 @@ def predict_labels(
 
 def accuracy(y_true: torch.Tensor, y_pred: torch.Tensor) -> float:
     if y_true.shape != y_pred.shape:
-        raise ValueError(f"y_true and y_pred must have the same length; got {tuple(y_true.shape)} and {tuple(y_pred.shape)}")
+        raise ValueError(
+            f"y_true and y_pred must have the same length; got {tuple(y_true.shape)} and {tuple(y_pred.shape)}"
+        )
     if y_true.numel() == 0:
         raise ValueError("cannot compute accuracy of an empty set")
     # Divide in Python (float64): a float32 mean makes e.g. 9000/10000 = 0.8999999762 < 0.9.

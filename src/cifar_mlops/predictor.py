@@ -35,7 +35,7 @@ def format_predictions(probabilities: torch.Tensor, labels: Sequence[str]) -> li
     confidences, indices = probabilities.max(dim=1)
     return [
         {"label": labels[index], "confidence": round(confidence, 4)}
-        for confidence, index in zip(confidences.tolist(), indices.tolist())
+        for confidence, index in zip(confidences.tolist(), indices.tolist(), strict=True)
     ]
 
 
