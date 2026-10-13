@@ -7,3 +7,5 @@ build/
 dist/
 pipeline.yaml
 .superpowers/
+.coverage
+.ruff_cache/
